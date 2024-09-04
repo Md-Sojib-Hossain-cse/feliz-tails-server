@@ -27,11 +27,18 @@ async function run() {
         await client.connect();
 
         const reviewsCollection = client.db("felizTailsDB").collection("reviews");
+        const petListingCollection = client.db("felizTailsDB").collection("petListing");
 
         app.get("/" ,async(req, res) => {
             res.send("Feliz Tails Server is running ...");
         })
 
+        //pet listing related api
+        app.get("/pet-listing" , async(req , res) => {
+            const query = {date : -1};
+            const result = await petListingCollection.find().sort(query).toArray();
+            res.send(result);
+        })
 
         //reviews related api
         app.get("/reviews" , async(req , res) => {
