@@ -35,8 +35,19 @@ async function run() {
 
         //pet listing related api
         app.get("/pet-listing" , async(req , res) => {
-            const query = {date : -1};
-            const result = await petListingCollection.find().sort(query).toArray();
+            const searchedCategory = req.query.category;
+            const searchedName = req.query.name;
+            const page = req.query.page;
+            const limit = req.query.limit;
+            let query = {};
+            if(searchedCategory){
+                query = {...query , category : searchedCategory};
+            }
+            if(searchedName){
+                query = {...query , name : {$regex : searchedName , $options : "i"}};
+            }
+            const sortBy = {date : -1};
+            const result = await petListingCollection.find(query).limit(page * limit).sort(sortBy).toArray();
             res.send(result);
         })
 
