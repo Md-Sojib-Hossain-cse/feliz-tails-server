@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 const cors = require('cors');
 require('dotenv').config()
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const port = process.env.PORT || 5000;
 
@@ -28,31 +28,47 @@ async function run() {
 
         const reviewsCollection = client.db("felizTailsDB").collection("reviews");
         const petListingCollection = client.db("felizTailsDB").collection("petListing");
+        const usersCollection = client.db("felizTailsDB").collection("users");
 
-        app.get("/" ,async(req, res) => {
+        app.get("/", async (req, res) => {
             res.send("Feliz Tails Server is running ...");
         })
 
+        //user related api
+        app.post("/users", async (req, res) => {
+            const userInfo = req.body;
+            const result = await usersCollection.insertOne(userInfo);
+            res.send(result);
+        })
+
         //pet listing related api
-        app.get("/pet-listing" , async(req , res) => {
+        app.get("/pet-listing", async (req, res) => {
             const searchedCategory = req.query.category;
             const searchedName = req.query.name;
             const page = req.query.page;
             const limit = req.query.limit;
             let query = {};
-            if(searchedCategory){
-                query = {...query , category : searchedCategory};
+            if (searchedCategory) {
+                query = { ...query, category: searchedCategory };
             }
-            if(searchedName){
-                query = {...query , name : {$regex : searchedName , $options : "i"}};
+            if (searchedName) {
+                query = { ...query, name: { $regex: searchedName, $options: "i" } };
             }
-            const sortBy = {date : -1};
+            const sortBy = { date: -1 };
             const result = await petListingCollection.find(query).limit(page * limit).sort(sortBy).toArray();
             res.send(result);
         })
 
+        //single pet details related api
+        app.get("/petDetails/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await petListingCollection.findOne(query);
+            res.send(result);
+        })
+
         //reviews related api
-        app.get("/reviews" , async(req , res) => {
+        app.get("/reviews", async (req, res) => {
             const result = await reviewsCollection.find().toArray();
             res.send(result);
         })
