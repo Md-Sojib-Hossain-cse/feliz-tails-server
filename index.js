@@ -56,9 +56,10 @@ async function run() {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
 
-        const reviewsCollection = client.db("felizTailsDB").collection("reviews");
-        const petListingCollection = client.db("felizTailsDB").collection("petListing");
         const usersCollection = client.db("felizTailsDB").collection("users");
+        const petListingCollection = client.db("felizTailsDB").collection("petListing");
+        const reviewsCollection = client.db("felizTailsDB").collection("reviews");
+        const adoptionRequestCollection = client.db("felizTailsDB").collection("adoptionRequest");
 
 
         //custom middleware 
@@ -119,6 +120,23 @@ async function run() {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await petListingCollection.findOne(query);
+            res.send(result);
+        })
+
+
+        //adoption requiest
+        app.post("/adoption-request" , async(req , res) => {
+            const requestData = req.body;
+            //checking if user already request once 
+            const query = {
+                'userInfo.userEmail' : requestData.userInfo.userEmail,
+                'petInfo._id' : requestData.petInfo._id,
+            }
+            const idDataExist = await adoptionRequestCollection.findOne(query);
+            if(idDataExist){
+                return res.send({message : "Request already Exist"})
+            }
+            const result = await adoptionRequestCollection.insertOne(requestData);
             res.send(result);
         })
 
