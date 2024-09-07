@@ -19,15 +19,15 @@ app.use(express.json());
 app.use(cookieParser());
 
 //custom middleware
-const verifyToken = (req , res , next) => {
+const verifyToken = (req, res, next) => {
     const token = req?.cookies?.token;
-    console.log(token , req.cookie , req.cookie?.token)
-    if(!token){
-        return res.status(401).send({message : "unauthorized access"})
+    console.log(token, req.cookie, req.cookie?.token)
+    if (!token) {
+        return res.status(401).send({ message: "unauthorized access" })
     }
-    jwt.verify(token , process.env.ACCESS_TOKEN_SECRET ,  (err , decoded) => {
-        if(err){
-            return res.status(401).send({message : "unauthorized access"})
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).send({ message: "unauthorized access" })
         }
         req.user = decoded;
         next();
@@ -60,17 +60,18 @@ async function run() {
         const petListingCollection = client.db("felizTailsDB").collection("petListing");
         const reviewsCollection = client.db("felizTailsDB").collection("reviews");
         const adoptionRequestCollection = client.db("felizTailsDB").collection("adoptionRequest");
+        const donationCampaignCollection = client.db("felizTailsDB").collection("donationCampaign");
 
 
         //custom middleware 
-        const verifyAdmin = async(req , res , next) => {
-            const user =req?.user;
+        const verifyAdmin = async (req, res, next) => {
+            const user = req?.user;
             console.log(user?.email)
-            const query = {email : user?.email};
+            const query = { email: user?.email };
             const result = await usersCollection.findOne(query)
             console.log(result)
-            if(result.role !== "admin"){
-                return res.status(401).send({message : "unauthorized access"})
+            if (result.role !== "admin") {
+                return res.status(401).send({ message: "unauthorized access" })
             }
             next();
         }
@@ -82,7 +83,7 @@ async function run() {
         //jwt related api
         app.post("/jwt", async (req, res) => {
             const token = await jwt.sign(req.body, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "24hr" })
-            res.cookie("token" , token , cookieOptions).send({success : true})
+            res.cookie("token", token, cookieOptions).send({ success: true })
         })
 
         //user related api
@@ -98,7 +99,7 @@ async function run() {
         })
 
         //pet listing related api
-        app.get("/pet-listing",  async (req, res) => {
+        app.get("/pet-listing", async (req, res) => {
             const searchedCategory = req.query.category;
             const searchedName = req.query.name;
             const page = req.query.page;
@@ -123,18 +124,27 @@ async function run() {
             res.send(result);
         })
 
+        //donation campaign related api
+        app.get("/donation-campaign", async (req, res) => {
+            const page = req.query.page;
+            const limit = req.query.limit;
+            const sortBy = { createdAt: -1 };
+            const result = await donationCampaignCollection.find().skip((page -1 ) * limit).limit(page * limit).sort(sortBy).toArray();
+            res.send(result);
+        })
+
 
         //adoption requiest
-        app.post("/adoption-request" , async(req , res) => {
+        app.post("/adoption-request", async (req, res) => {
             const requestData = req.body;
             //checking if user already request once 
             const query = {
-                'userInfo.userEmail' : requestData.userInfo.userEmail,
-                'petInfo._id' : requestData.petInfo._id,
+                'userInfo.userEmail': requestData.userInfo.userEmail,
+                'petInfo._id': requestData.petInfo._id,
             }
             const idDataExist = await adoptionRequestCollection.findOne(query);
-            if(idDataExist){
-                return res.send({message : "Request already Exist"})
+            if (idDataExist) {
+                return res.send({ message: "Request already Exist" })
             }
             const result = await adoptionRequestCollection.insertOne(requestData);
             res.send(result);
