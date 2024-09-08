@@ -141,6 +141,41 @@ async function run() {
             res.send(result);
         })
 
+        app.patch("/donation-campaign/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = {_id : new ObjectId(id)};
+            const donationData = req.body;
+            console.log(id , query , donationData)
+            const previousDonation = await donationCampaignCollection.aggregate([
+                {
+                    $match: { _id: new ObjectId(id) }
+                },
+                {
+                    $unwind: "$donationDetails"
+                },
+                {
+                    $group: {
+                        _id : "$_id",
+                        totalDonationAmount: { $sum: "$donationDetails.amount" }
+                    }
+                }
+            ]).toArray();
+            const currentTotal = parseInt(previousDonation[0].totalDonationAmount) > 0 ? parseInt(previousDonation[0].totalDonationAmount) : 0;
+            const totalDonation = currentTotal + parseInt(donationData.amount);
+            const updatedDoc = {
+                $push : {
+                    donationDetails : 
+                        {...donationData}
+                },
+                $set : {
+                    donatedAmount : totalDonation
+                }
+            }
+            const upsert = true;
+            const result = await donationCampaignCollection.updateOne(query , updatedDoc , upsert)
+            res.send(result);
+        })
+
 
         //adoption requiest
         app.post("/adoption-request", async (req, res) => {
@@ -168,7 +203,6 @@ async function run() {
         app.post("/create-payment-intent", async (req, res) => {
             const { donationAmount } = req.body;
             const amount = parseInt(donationAmount * 100);
-            console.log("amount inside payment intent" , amount)
 
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
@@ -179,7 +213,7 @@ async function run() {
             })
 
             res.send({
-                clientSecret : paymentIntent.client_secret
+                clientSecret: paymentIntent.client_secret
             })
         })
 
