@@ -5,6 +5,7 @@ require('dotenv').config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
+const stripe = require('stripe')(process.env.PAYMENT_GATEWAY_SK)
 
 const port = process.env.PORT || 5000;
 
@@ -129,7 +130,14 @@ async function run() {
             const page = req.query.page;
             const limit = req.query.limit;
             const sortBy = { createdAt: -1 };
-            const result = await donationCampaignCollection.find().skip((page -1 ) * limit).limit(page * limit).sort(sortBy).toArray();
+            const result = await donationCampaignCollection.find().skip((page - 1) * limit).limit(page * limit).sort(sortBy).toArray();
+            res.send(result);
+        })
+
+        app.get("/donation-campaign/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await donationCampaignCollection.findOne(query);
             res.send(result);
         })
 
@@ -154,6 +162,25 @@ async function run() {
         app.get("/reviews", async (req, res) => {
             const result = await reviewsCollection.find().toArray();
             res.send(result);
+        })
+
+        //payment related api
+        app.post("/create-payment-intent", async (req, res) => {
+            const { donationAmount } = req.body;
+            const amount = parseInt(donationAmount * 100);
+            console.log("amount inside payment intent" , amount)
+
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                "payment_method_types": [
+                    "card"
+                ],
+            })
+
+            res.send({
+                clientSecret : paymentIntent.client_secret
+            })
         })
 
         app.listen(port, () => {
