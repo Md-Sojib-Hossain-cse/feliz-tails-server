@@ -117,6 +117,20 @@ async function run() {
             res.send(result);
         })
 
+        app.post("/add-a-pet" , async(req , res) => {
+            const petInfo = req.body;
+            const query = {
+                name : petInfo.name,
+                "addedBy.email" : petInfo.addedBy.email,
+            }
+            const isExist = await petListingCollection.findOne(query);
+            if(isExist){
+                return res.send({message : "pet already exist"});
+            }
+            const result = await petListingCollection.insertOne(petInfo);
+            res.send(result);
+        })
+
         //single pet details related api
         app.get("/petDetails/:id", async (req, res) => {
             const id = req.params.id;
@@ -127,8 +141,8 @@ async function run() {
 
         //donation campaign related api
         app.get("/donation-campaign", async (req, res) => {
-            const page = req.query.page;
-            const limit = req.query.limit;
+            const page = req.query.page || 1;
+            const limit = req.query.limit || 5;
             const sortBy = { createdAt: -1 };
             const result = await donationCampaignCollection.find().skip((page - 1) * limit).limit(page * limit).sort(sortBy).toArray();
             res.send(result);
@@ -160,7 +174,7 @@ async function run() {
                     }
                 }
             ]).toArray();
-            const currentTotal = parseInt(previousDonation[0].totalDonationAmount) > 0 ? parseInt(previousDonation[0].totalDonationAmount) : 0;
+            const currentTotal = parseInt(previousDonation[0]?.totalDonationAmount) > 0 ? parseInt(previousDonation[0]?.totalDonationAmount) : 0;
             const totalDonation = currentTotal + parseInt(donationData.amount);
             const updatedDoc = {
                 $push : {
@@ -185,8 +199,8 @@ async function run() {
                 'userInfo.userEmail': requestData.userInfo.userEmail,
                 'petInfo._id': requestData.petInfo._id,
             }
-            const idDataExist = await adoptionRequestCollection.findOne(query);
-            if (idDataExist) {
+            const isDataExist = await adoptionRequestCollection.findOne(query);
+            if (isDataExist) {
                 return res.send({ message: "Request already Exist" })
             }
             const result = await adoptionRequestCollection.insertOne(requestData);
