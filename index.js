@@ -140,6 +140,25 @@ async function run() {
             res.send(result)
         })
 
+        app.delete("/my-added-pets/:id" , async(req , res) => {
+            const id = req.params.id;
+            const query = {_id : new ObjectId(id)};
+            const result = await petListingCollection.deleteOne(query);
+            res.send(result);
+        })
+
+        app.patch("/my-added-pets/:id" , async(req , res) => {
+            const id = req.params.id;
+            const filter = {_id : new ObjectId(id)};
+            const updatedDoc = {
+                $set : {
+                    adopted : true,
+                }
+            }
+            const result = await petListingCollection.updateOne(filter , updatedDoc);
+            res.send(result);
+        })
+
         //single pet details related api
         app.get("/petDetails/:id", async (req, res) => {
             const id = req.params.id;
