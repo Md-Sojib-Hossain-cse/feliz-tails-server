@@ -140,6 +140,31 @@ async function run() {
             res.send(result);
         })
 
+        app.get("/all-pets", async (req, res) => {
+            const result = await petListingCollection.find().toArray();
+            res.send(result);
+        })
+
+        app.patch("/pet-listing/:id", async (req, res) => {
+            const id = req.params.id;
+            const updateBy = req.body;
+            const filter = {_id : new ObjectId(id)};
+            const updatedDoc = {
+                $set : {
+                    ...updateBy,
+                }
+            }
+            const result = await petListingCollection.updateOne(filter , updatedDoc);
+            res.send(result);
+        })
+
+        app.delete("/pet-listing/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = {_id : new ObjectId(id)};
+            const result = await petListingCollection.deleteOne(query);
+            res.send(result);
+        })
+
         // add pets by user
         app.post("/add-a-pet", async (req, res) => {
             const petInfo = req.body;
