@@ -19,23 +19,6 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-//custom middleware
-const verifyToken = (req, res, next) => {
-    const token = req?.cookies?.token;
-    console.log(token, req.cookie, req.cookie?.token)
-    if (!token) {
-        return res.status(401).send({ message: "unauthorized access" })
-    }
-    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-        if (err) {
-            return res.status(401).send({ message: "unauthorized access" })
-        }
-        req.user = decoded;
-        next();
-    })
-}
-
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.jnc3ejx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 const client = new MongoClient(uri, {
@@ -64,14 +47,30 @@ async function run() {
         const donationCampaignCollection = client.db("felizTailsDB").collection("donationCampaign");
 
 
-        //custom middleware 
+        //custom middleware
+        const verifyToken = (req, res, next) => {
+            const token = req?.cookies?.token;
+            console.log(token, req.cookie, req.cookie?.token)
+            if (!token) {
+                return res.status(401).send({ message: "unauthorized access" })
+            }
+            jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+                if (err) {
+                    return res.status(401).send({ message: "unauthorized access" })
+                }
+                req.user = decoded;
+                next();
+            })
+        }
+
+
         const verifyAdmin = async (req, res, next) => {
             const user = req?.user;
             console.log(user?.email)
             const query = { email: user?.email };
             const result = await usersCollection.findOne(query)
             console.log(result)
-            if (result.role !== "admin") {
+            if (result.role !== "Admin") {
                 return res.status(401).send({ message: "unauthorized access" })
             }
             next();
@@ -88,7 +87,31 @@ async function run() {
         })
 
         //user related api
-        app.post("/users", async (req, res) => {
+        app.get("/user/:email", async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const result = await usersCollection.findOne(query);
+            res.send(result);
+        })
+
+        app.get("/users", async (req, res) => {
+            const result = await usersCollection.find().toArray();
+            res.send(result);
+        })
+
+        app.patch("/users/:id", async (req, res) => {
+            const id = req.params.id;
+            const filter = {_id : new ObjectId(id)};
+            const updatedDoc = {
+                $set : {
+                    role : "Admin",
+                }
+            }
+            const result = await usersCollection.updateOne(filter , updatedDoc);
+            res.send(result);
+        })
+
+        app.post("/users",verifyToken, verifyAdmin, async (req, res) => {
             const userInfo = req.body;
             const query = { email: userInfo.email };
             const isExist = await usersCollection.findOne(query);
@@ -283,7 +306,7 @@ async function run() {
                     $unwind: "$donationDetails"
                 },
                 {
-                    $match: { "donationDetails.donatorEmail": email }  
+                    $match: { "donationDetails.donatorEmail": email }
                 },
                 {
                     $project: {
@@ -293,24 +316,24 @@ async function run() {
                         "donationDetails.amount": 1,
                         "donationDetails.transactionId": 1,
                         "donationDetails.donatorEmail": 1
-                    } 
+                    }
                 }
             ]).toArray();
             res.send(result);
         })
 
-        app.patch("/my-donations" , async(req , res) => {
+        app.patch("/my-donations", async (req, res) => {
             const id = req?.query?.id;
             const transactionId = req?.query?.transactionId;
-            const query = {_id : new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const updatedDoc = {
-                $pull : {
-                    donationDetails : {
-                        transactionId : transactionId,
+                $pull: {
+                    donationDetails: {
+                        transactionId: transactionId,
                     }
                 }
             }
-            const result = await donationCampaignCollection.updateOne(query , updatedDoc);
+            const result = await donationCampaignCollection.updateOne(query, updatedDoc);
             res.send(result);
         })
 
