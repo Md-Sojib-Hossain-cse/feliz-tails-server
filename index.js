@@ -183,8 +183,8 @@ async function run() {
 
         //donation campaign related api
         app.get("/donation-campaign", async (req, res) => {
-            const page = req.query.page || 1;
-            const limit = req.query.limit || 5;
+            const page = req?.query?.page || 1;
+            const limit = req?.query?.limit || 5;
             const sortBy = { createdAt: -1 };
             const result = await donationCampaignCollection.find().skip((page - 1) * limit).limit(page * limit).sort(sortBy).toArray();
             res.send(result);
@@ -211,11 +211,24 @@ async function run() {
             res.send(result);
         })
 
+        app.patch("/donation-campaign/:id" , async(req , res) => {
+            const id = req.params.id;
+            const updatedInfo = req.body;
+            const filter = {_id : new ObjectId(id)};
+            const updatedDoc = {
+                $set : {
+                    ...updatedInfo,
+                }
+            }
+            const result = await petListingCollection.updateOne(filter , updatedDoc);
+            console.log(result)
+            res.send(result);
+        })
+
         app.patch("/donation-campaign/:id", async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const donationData = req.body;
-            console.log(id, query, donationData)
             const previousDonation = await donationCampaignCollection.aggregate([
                 {
                     $match: { _id: new ObjectId(id) }
@@ -243,6 +256,33 @@ async function run() {
             }
             const upsert = true;
             const result = await donationCampaignCollection.updateOne(query, updatedDoc, upsert)
+            res.send(result);
+        })
+
+        //my donation campaign related api 
+        app.get("/my-donation-campaign", async(req , res) => {
+            const userEmail = req.query.email;
+            const query = {'addedBy.email' : userEmail};
+            const result = await donationCampaignCollection.find(query).toArray();
+            res.send(result);
+        })
+        app.get("/my-donation-campaign/:id", async(req , res) => {
+            const id = req.params.id;
+            const query = {_id : new ObjectId(id)};
+            const result = await donationCampaignCollection.findOne(query);
+            res.send(result);
+        })
+
+        app.patch("/my-donation-campaign/:id", async(req , res) => {
+            const id = req.params.id;
+            const isPaused = req.query.paused;
+            const filter = {_id : new ObjectId(id)};
+            const updatedDoc = {
+                $set : {
+                    isPaused : isPaused,
+                }
+            }
+            const result = await donationCampaignCollection.updateOne(filter , updatedDoc);
             res.send(result);
         })
 
