@@ -105,7 +105,7 @@ async function run() {
             const searchedName = req.query.name;
             const page = req.query.page;
             const limit = req.query.limit;
-            let query = {};
+            let query = {adopted : false};
             if (searchedCategory) {
                 query = { ...query, category: searchedCategory };
             }
@@ -117,18 +117,27 @@ async function run() {
             res.send(result);
         })
 
-        app.post("/add-a-pet" , async(req , res) => {
+        // add pets by user
+        app.post("/add-a-pet", async (req, res) => {
             const petInfo = req.body;
             const query = {
-                name : petInfo.name,
-                "addedBy.email" : petInfo.addedBy.email,
+                name: petInfo.name,
+                "addedBy.email": petInfo.addedBy.email,
             }
             const isExist = await petListingCollection.findOne(query);
-            if(isExist){
-                return res.send({message : "pet already exist"});
+            if (isExist) {
+                return res.send({ message: "pet already exist" });
             }
             const result = await petListingCollection.insertOne(petInfo);
             res.send(result);
+        })
+
+        //get added pets by user
+        app.get("/my-added-pets/:email" , async (req , res) => {
+            const email = req.params.email;
+            const query = {"addedBy.email" : email};
+            const result = await petListingCollection.find(query).toArray();
+            res.send(result)
         })
 
         //single pet details related api
@@ -136,6 +145,20 @@ async function run() {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await petListingCollection.findOne(query);
+            res.send(result);
+        })
+
+        //update pet info 
+        app.put("/update-a-pet/:id" , async(req , res) => {
+            const id = req.params.id;
+            const updatedInfo = req.body;
+            const filter = {_id : new ObjectId(id)};
+            const updatedDoc = {
+                $set : {
+                    ...updatedInfo,
+                }
+            }
+            const result = await petListingCollection.updateOne(filter , updatedDoc);
             res.send(result);
         })
 
@@ -157,9 +180,9 @@ async function run() {
 
         app.patch("/donation-campaign/:id", async (req, res) => {
             const id = req.params.id;
-            const query = {_id : new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const donationData = req.body;
-            console.log(id , query , donationData)
+            console.log(id, query, donationData)
             const previousDonation = await donationCampaignCollection.aggregate([
                 {
                     $match: { _id: new ObjectId(id) }
@@ -169,7 +192,7 @@ async function run() {
                 },
                 {
                     $group: {
-                        _id : "$_id",
+                        _id: "$_id",
                         totalDonationAmount: { $sum: "$donationDetails.amount" }
                     }
                 }
@@ -177,16 +200,16 @@ async function run() {
             const currentTotal = parseInt(previousDonation[0]?.totalDonationAmount) > 0 ? parseInt(previousDonation[0]?.totalDonationAmount) : 0;
             const totalDonation = currentTotal + parseInt(donationData.amount);
             const updatedDoc = {
-                $push : {
-                    donationDetails : 
-                        {...donationData}
+                $push: {
+                    donationDetails:
+                        { ...donationData }
                 },
-                $set : {
-                    donatedAmount : totalDonation
+                $set: {
+                    donatedAmount: totalDonation
                 }
             }
             const upsert = true;
-            const result = await donationCampaignCollection.updateOne(query , updatedDoc , upsert)
+            const result = await donationCampaignCollection.updateOne(query, updatedDoc, upsert)
             res.send(result);
         })
 
