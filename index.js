@@ -197,6 +197,20 @@ async function run() {
             res.send(result);
         })
 
+        app.post("/donation-campaign" , async(req , res) => {
+            const campaignDetails = req.body;
+            const query = {
+                petName : campaignDetails?.petName,
+                'addedBy.email' : campaignDetails?.addedBy?.email,
+            }
+            const isExist = await donationCampaignCollection.findOne(query);
+            if (isExist) {
+                return res.send({ message: "campaign already exist" });
+            }
+            const result = await donationCampaignCollection.insertOne(campaignDetails);
+            res.send(result);
+        })
+
         app.patch("/donation-campaign/:id", async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
