@@ -105,7 +105,7 @@ async function run() {
             const searchedName = req.query.name;
             const page = req.query.page;
             const limit = req.query.limit;
-            let query = {adopted : false};
+            let query = { adopted: false };
             if (searchedCategory) {
                 query = { ...query, category: searchedCategory };
             }
@@ -133,29 +133,29 @@ async function run() {
         })
 
         //get added pets by user
-        app.get("/my-added-pets/:email" , async (req , res) => {
+        app.get("/my-added-pets/:email", async (req, res) => {
             const email = req.params.email;
-            const query = {"addedBy.email" : email};
+            const query = { "addedBy.email": email };
             const result = await petListingCollection.find(query).toArray();
             res.send(result)
         })
 
-        app.delete("/my-added-pets/:id" , async(req , res) => {
+        app.delete("/my-added-pets/:id", async (req, res) => {
             const id = req.params.id;
-            const query = {_id : new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const result = await petListingCollection.deleteOne(query);
             res.send(result);
         })
 
-        app.patch("/my-added-pets/:id" , async(req , res) => {
+        app.patch("/my-added-pets/:id", async (req, res) => {
             const id = req.params.id;
-            const filter = {_id : new ObjectId(id)};
+            const filter = { _id: new ObjectId(id) };
             const updatedDoc = {
-                $set : {
-                    adopted : true,
+                $set: {
+                    adopted: true,
                 }
             }
-            const result = await petListingCollection.updateOne(filter , updatedDoc);
+            const result = await petListingCollection.updateOne(filter, updatedDoc);
             res.send(result);
         })
 
@@ -168,16 +168,16 @@ async function run() {
         })
 
         //update pet info 
-        app.put("/update-a-pet/:id" , async(req , res) => {
+        app.put("/update-a-pet/:id", async (req, res) => {
             const id = req.params.id;
             const updatedInfo = req.body;
-            const filter = {_id : new ObjectId(id)};
+            const filter = { _id: new ObjectId(id) };
             const updatedDoc = {
-                $set : {
+                $set: {
                     ...updatedInfo,
                 }
             }
-            const result = await petListingCollection.updateOne(filter , updatedDoc);
+            const result = await petListingCollection.updateOne(filter, updatedDoc);
             res.send(result);
         })
 
@@ -197,11 +197,11 @@ async function run() {
             res.send(result);
         })
 
-        app.post("/donation-campaign" , async(req , res) => {
+        app.post("/donation-campaign", async (req, res) => {
             const campaignDetails = req.body;
             const query = {
-                petName : campaignDetails?.petName,
-                'addedBy.email' : campaignDetails?.addedBy?.email,
+                petName: campaignDetails?.petName,
+                'addedBy.email': campaignDetails?.addedBy?.email,
             }
             const isExist = await donationCampaignCollection.findOne(query);
             if (isExist) {
@@ -211,16 +211,16 @@ async function run() {
             res.send(result);
         })
 
-        app.patch("/donation-campaign/:id" , async(req , res) => {
+        app.patch("/donation-campaign/:id", async (req, res) => {
             const id = req.params.id;
             const updatedInfo = req.body;
-            const filter = {_id : new ObjectId(id)};
+            const filter = { _id: new ObjectId(id) };
             const updatedDoc = {
-                $set : {
+                $set: {
                     ...updatedInfo,
                 }
             }
-            const result = await petListingCollection.updateOne(filter , updatedDoc);
+            const result = await petListingCollection.updateOne(filter, updatedDoc);
             console.log(result)
             res.send(result);
         })
@@ -260,29 +260,70 @@ async function run() {
         })
 
         //my donation campaign related api 
-        app.get("/my-donation-campaign", async(req , res) => {
+        app.get("/my-donation-campaign", async (req, res) => {
             const userEmail = req.query.email;
-            const query = {'addedBy.email' : userEmail};
+            const query = { 'addedBy.email': userEmail };
             const result = await donationCampaignCollection.find(query).toArray();
             res.send(result);
         })
-        app.get("/my-donation-campaign/:id", async(req , res) => {
+        app.get("/my-donation-campaign/:id", async (req, res) => {
             const id = req.params.id;
-            const query = {_id : new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const result = await donationCampaignCollection.findOne(query);
             res.send(result);
         })
 
-        app.patch("/my-donation-campaign/:id", async(req , res) => {
-            const id = req.params.id;
-            const isPaused = req.query.paused;
-            const filter = {_id : new ObjectId(id)};
+        app.get("/my-donations/:email", async (req, res) => {
+            const email = req.params.email;
+            const result = await donationCampaignCollection.aggregate([
+                {
+                    $match: { "donationDetails.donatorEmail": email }
+                },
+                {
+                    $unwind: "$donationDetails"
+                },
+                {
+                    $match: { "donationDetails.donatorEmail": email }  
+                },
+                {
+                    $project: {
+                        _id: 1,
+                        petName: 1,
+                        petImage: 1,
+                        "donationDetails.amount": 1,
+                        "donationDetails.transactionId": 1,
+                        "donationDetails.donatorEmail": 1
+                    } 
+                }
+            ]).toArray();
+            res.send(result);
+        })
+
+        app.patch("/my-donations" , async(req , res) => {
+            const id = req?.query?.id;
+            const transactionId = req?.query?.transactionId;
+            const query = {_id : new ObjectId(id)};
             const updatedDoc = {
-                $set : {
-                    isPaused : isPaused,
+                $pull : {
+                    donationDetails : {
+                        transactionId : transactionId,
+                    }
                 }
             }
-            const result = await donationCampaignCollection.updateOne(filter , updatedDoc);
+            const result = await donationCampaignCollection.updateOne(query , updatedDoc);
+            res.send(result);
+        })
+
+        app.patch("/my-donation-campaign/:id", async (req, res) => {
+            const id = req.params.id;
+            const isPaused = req.query.paused;
+            const filter = { _id: new ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    isPaused: isPaused,
+                }
+            }
+            const result = await donationCampaignCollection.updateOne(filter, updatedDoc);
             res.send(result);
         })
 
