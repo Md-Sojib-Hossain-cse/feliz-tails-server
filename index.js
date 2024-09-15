@@ -140,7 +140,7 @@ async function run() {
             res.send(result);
         })
 
-        app.get("/all-pets", async (req, res) => {
+        app.get("/all-pets" , async (req, res) => {
             const result = await petListingCollection.find().toArray();
             res.send(result);
         })
@@ -158,7 +158,7 @@ async function run() {
             res.send(result);
         })
 
-        app.delete("/pet-listing/:id", async (req, res) => {
+        app.delete("/pet-listing/:id" , async (req, res) => {
             const id = req.params.id;
             const query = {_id : new ObjectId(id)};
             const result = await petListingCollection.deleteOne(query);
@@ -230,6 +230,12 @@ async function run() {
         })
 
         //donation campaign related api
+
+        app.get("/donation-campaign" , async (req, res) => {
+            const result = await donationCampaignCollection.find().toArray();
+            res.send(result);
+        })
+
         app.get("/donation-campaign", async (req, res) => {
             const page = req?.query?.page || 1;
             const limit = req?.query?.limit || 5;
@@ -269,7 +275,27 @@ async function run() {
                 }
             }
             const result = await petListingCollection.updateOne(filter, updatedDoc);
-            console.log(result)
+            res.send(result);
+        })
+
+        app.delete("/all-donation-campaign/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await petListingCollection.deleteOne(query);
+            res.send(result);
+        })
+
+        app.patch("/all-donation-campaign/:id", async (req, res) => {
+            const id = req?.params?.id;
+            const updatedInfo = req.body;
+            console.log(id , updatedInfo)
+            const query = { _id: new ObjectId(id) };
+            const updatedDoc = {
+                $set : {
+                    ...updatedInfo
+                }
+            }
+            const result = await donationCampaignCollection.updateOne(query, updatedDoc);
             res.send(result);
         })
 
