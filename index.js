@@ -9,7 +9,11 @@ const stripe = require('stripe')(process.env.PAYMENT_GATEWAY_SK)
 
 const port = process.env.PORT || 5000;
 
-//middleware
+
+app.use(express.json());
+app.use(cookieParser());
+
+// middleware
 app.use(cors({
     origin: [
         'http://localhost:5173', 'http://localhost:5174',
@@ -18,8 +22,6 @@ app.use(cors({
     ],
     credentials: true
 }));
-app.use(express.json());
-app.use(cookieParser());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.jnc3ejx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -33,8 +35,8 @@ const client = new MongoClient(uri, {
 
 const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
 };
 
 async function run() {
@@ -48,8 +50,17 @@ async function run() {
         const adoptionRequestCollection = client.db("felizTailsDB").collection("adoptionRequest");
         const donationCampaignCollection = client.db("felizTailsDB").collection("donationCampaign");
 
+        app.get("/", async (req, res) => {
+            res.send("Feliz Tails Server is running ...");
+        })
 
-        //custom middleware
+        // jwt related api
+        app.post("/jwt", async (req, res) => {
+            const token = await jwt.sign(req?.body, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "24hr" })
+            res.cookie("token", token, cookieOptions).send({ success: true })
+        })
+
+        // custom middleware
         const verifyToken = (req, res, next) => {
             const token = req?.cookies?.token;
             if (!token) {
@@ -66,24 +77,25 @@ async function run() {
 
 
         const verifyAdmin = async (req, res, next) => {
-            const user = req?.user;
-            const query = { email: user?.email };
+            const userEmail = req?.query?.userEmail;
+            const query = { email: userEmail };
             const result = await usersCollection.findOne(query)
-            if (result.role !== "Admin") {
-                return res.status(401).send({ message: "unauthorized access" })
+            if (result?.role !== "Admin") {
+                return res.status(403).send({ message: "forbidden access" })
             }
             next();
         }
 
-        app.get("/", async (req, res) => {
-            res.send("Feliz Tails Server is running ...");
-        })
 
-        //jwt related api
-        app.post("/jwt", async (req, res) => {
-            const token = await jwt.sign(req.body, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "24hr" })
-            res.cookie("token", token, cookieOptions).send({ success: true })
-        })
+        app.post("/logout", async (req, res) => {
+            res
+                .clearCookie("token", {
+                    maxAge: 0,
+                    secure: process.env.NODE_ENV === "production" ? true : false,
+                    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+                })
+                .send({ status: true });
+        });
 
         //user related api
         app.get("/user/:email", async (req, res) => {
@@ -93,12 +105,12 @@ async function run() {
             res.send(result);
         })
 
-        app.get("/users" , verifyToken , verifyAdmin, async (req, res) => {
+        app.get("/users", verifyAdmin, async (req, res) => {
             const result = await usersCollection.find().toArray();
             res.send(result);
         })
 
-        app.patch("/users/:id" , verifyToken , verifyAdmin, async (req, res) => {
+        app.patch("/users/:id", verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const updatedDoc = {
@@ -125,8 +137,8 @@ async function run() {
         app.get("/pet-listing", async (req, res) => {
             const searchedCategory = req.query.category;
             const searchedName = req.query.name;
-            const page = req.query.page;
-            const limit = req.query.limit;
+            const page = req?.query?.page || 1;
+            const limit = req?.query?.limit || 5;
             let query = { adopted: false };
             if (searchedCategory) {
                 query = { ...query, category: searchedCategory };
@@ -139,7 +151,7 @@ async function run() {
             res.send(result);
         })
 
-        app.get("/my-pets-adoption-request/:email", verifyToken, async (req, res) => {
+        app.get("/my-pets-adoption-request/:email", async (req, res) => {
             const email = req.params.email;
             const result = await adoptionRequestCollection.aggregate([
                 {
@@ -163,7 +175,7 @@ async function run() {
             res.send(result);
         })
 
-        app.patch("/my-pets-adoption-request", verifyToken, async (req, res) => {
+        app.patch("/my-pets-adoption-request", async (req, res) => {
             const listingId = req.query.listingId;
             const adoptionRequestId = req.query.adoptionRequestId;
             const filter = { _id: new ObjectId(listingId) };
@@ -185,7 +197,7 @@ async function run() {
             }
         })
 
-        app.delete("/my-pets-adoption-request/:id", verifyToken, async (req, res) => {
+        app.delete("/my-pets-adoption-request/:id", async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await adoptionRequestCollection.deleteOne(query);
@@ -193,12 +205,12 @@ async function run() {
         })
 
 
-        app.get("/all-pets",verifyToken , verifyAdmin, async (req, res) => {
+        app.get("/all-pets", verifyAdmin, async (req, res) => {
             const result = await petListingCollection.find().toArray();
             res.send(result);
         })
 
-        app.patch("/pet-listing/:id",verifyToken, async (req, res) => {
+        app.patch("/pet-listing/:id" , verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const updateBy = req.body;
             const filter = { _id: new ObjectId(id) };
@@ -211,7 +223,7 @@ async function run() {
             res.send(result);
         })
 
-        app.delete("/pet-listing/:id" , verifyToken, async (req, res) => {
+        app.delete("/pet-listing/:id" , verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await petListingCollection.deleteOne(query);
@@ -219,7 +231,7 @@ async function run() {
         })
 
         // add pets by user
-        app.post("/add-a-pet" , verifyToken , async (req, res) => {
+        app.post("/add-a-pet", async (req, res) => {
             const petInfo = req.body;
             const query = {
                 name: petInfo.name,
@@ -234,21 +246,21 @@ async function run() {
         })
 
         //get added pets by user
-        app.get("/my-added-pets/:email",verifyToken, async (req, res) => {
+        app.get("/my-added-pets/:email", async (req, res) => {
             const email = req.params.email;
             const query = { "addedBy.email": email };
             const result = await petListingCollection.find(query).toArray();
             res.send(result)
         })
 
-        app.delete("/my-added-pets/:id",verifyToken, async (req, res) => {
+        app.delete("/my-added-pets/:id", async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await petListingCollection.deleteOne(query);
             res.send(result);
         })
 
-        app.patch("/my-added-pets/:id",verifyToken, async (req, res) => {
+        app.patch("/my-added-pets/:id", async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const updatedDoc = {
@@ -269,7 +281,7 @@ async function run() {
         })
 
         //update pet info 
-        app.put("/update-a-pet/:id" , verifyToken, async (req, res) => {
+        app.put("/update-a-pet/:id", async (req, res) => {
             const id = req.params.id;
             const updatedInfo = req.body;
             const filter = { _id: new ObjectId(id) };
@@ -307,7 +319,7 @@ async function run() {
             res.send(result);
         })
 
-        app.post("/donation-campaign",verifyToken, async (req, res) => {
+        app.post("/donation-campaign", async (req, res) => {
             const campaignDetails = req.body;
             const query = {
                 petName: campaignDetails?.petName,
@@ -321,7 +333,7 @@ async function run() {
             res.send(result);
         })
 
-        app.patch("/edit-donation-campaign/:id",verifyToken, async (req, res) => {
+        app.patch("/edit-donation-campaign/:id", async (req, res) => {
             const id = req.params.id;
             const updatedInfo = req.body;
             const filter = { _id: new ObjectId(id) };
@@ -334,14 +346,14 @@ async function run() {
             res.send(result);
         })
 
-        app.delete("/all-donation-campaign/:id",verifyToken , verifyAdmin, async (req, res) => {
+        app.delete("/all-donation-campaign/:id", verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await petListingCollection.deleteOne(query);
             res.send(result);
         })
 
-        app.patch("/all-donation-campaign/:id",verifyToken , verifyAdmin, async (req, res) => {
+        app.patch("/all-donation-campaign/:id", verifyAdmin, async (req, res) => {
             const id = req?.params?.id;
             const updatedInfo = req.body;
             const query = { _id: new ObjectId(id) };
@@ -389,20 +401,20 @@ async function run() {
         })
 
         //my donation campaign related api 
-        app.get("/my-donation-campaign", verifyToken, async (req, res) => {
+        app.get("/my-donation-campaign", async (req, res) => {
             const userEmail = req.query.email;
             const query = { 'addedBy.email': userEmail };
             const result = await donationCampaignCollection.find(query).toArray();
             res.send(result);
         })
-        app.get("/my-donation-campaign/:id" , verifyToken, async (req, res) => {
+        app.get("/my-donation-campaign/:id", async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await donationCampaignCollection.findOne(query);
             res.send(result);
         })
 
-        app.get("/my-donations/:email",verifyToken, async (req, res) => {
+        app.get("/my-donations/:email", async (req, res) => {
             const email = req.params.email;
             const result = await donationCampaignCollection.aggregate([
                 {
@@ -428,7 +440,7 @@ async function run() {
             res.send(result);
         })
 
-        app.patch("/my-donations" , verifyToken, async (req, res) => {
+        app.patch("/my-donations", async (req, res) => {
             const id = req?.query?.id;
             const transactionId = req?.query?.transactionId;
             const query = { _id: new ObjectId(id) };
@@ -443,7 +455,7 @@ async function run() {
             res.send(result);
         })
 
-        app.patch("/my-donation-campaign/:id" , verifyToken, async (req, res) => {
+        app.patch("/my-donation-campaign/:id", async (req, res) => {
             const id = req.params.id;
             const isPaused = req.query.paused;
             const filter = { _id: new ObjectId(id) };
@@ -458,7 +470,7 @@ async function run() {
 
 
         //adoption requiest
-        app.post("/adoption-request" , verifyToken, async (req, res) => {
+        app.post("/adoption-request", async (req, res) => {
             const requestData = req.body;
             //checking if user already request once 
             const query = {
@@ -480,7 +492,7 @@ async function run() {
         })
 
         //payment related api
-        app.post("/create-payment-intent",verifyToken, async (req, res) => {
+        app.post("/create-payment-intent", async (req, res) => {
             const { donationAmount } = req.body;
             const amount = parseInt(donationAmount * 100);
 
