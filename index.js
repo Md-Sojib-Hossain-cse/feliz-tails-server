@@ -13,6 +13,8 @@ const port = process.env.PORT || 5000;
 app.use(cors({
     origin: [
         'http://localhost:5173', 'http://localhost:5174',
+        'https://feliz-tails.firebaseapp.com',
+        'https://feliz-tails.web.app'
     ],
     credentials: true
 }));
@@ -38,7 +40,7 @@ const cookieOptions = {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
 
         const usersCollection = client.db("felizTailsDB").collection("users");
         const petListingCollection = client.db("felizTailsDB").collection("petListing");
@@ -50,7 +52,6 @@ async function run() {
         //custom middleware
         const verifyToken = (req, res, next) => {
             const token = req?.cookies?.token;
-            console.log(token, req.cookie, req.cookie?.token)
             if (!token) {
                 return res.status(401).send({ message: "unauthorized access" })
             }
@@ -66,10 +67,8 @@ async function run() {
 
         const verifyAdmin = async (req, res, next) => {
             const user = req?.user;
-            console.log(user?.email)
             const query = { email: user?.email };
             const result = await usersCollection.findOne(query)
-            console.log(result)
             if (result.role !== "Admin") {
                 return res.status(401).send({ message: "unauthorized access" })
             }
@@ -94,24 +93,24 @@ async function run() {
             res.send(result);
         })
 
-        app.get("/users", async (req, res) => {
+        app.get("/users" , verifyToken , verifyAdmin, async (req, res) => {
             const result = await usersCollection.find().toArray();
             res.send(result);
         })
 
-        app.patch("/users/:id", async (req, res) => {
+        app.patch("/users/:id" , verifyToken , verifyAdmin, async (req, res) => {
             const id = req.params.id;
-            const filter = {_id : new ObjectId(id)};
+            const filter = { _id: new ObjectId(id) };
             const updatedDoc = {
-                $set : {
-                    role : "Admin",
+                $set: {
+                    role: "Admin",
                 }
             }
-            const result = await usersCollection.updateOne(filter , updatedDoc);
+            const result = await usersCollection.updateOne(filter, updatedDoc);
             res.send(result);
         })
 
-        app.post("/users",verifyToken, verifyAdmin, async (req, res) => {
+        app.post("/users", async (req, res) => {
             const userInfo = req.body;
             const query = { email: userInfo.email };
             const isExist = await usersCollection.findOne(query);
@@ -140,33 +139,87 @@ async function run() {
             res.send(result);
         })
 
-        app.get("/all-pets" , async (req, res) => {
+        app.get("/my-pets-adoption-request/:email", verifyToken, async (req, res) => {
+            const email = req.params.email;
+            const result = await adoptionRequestCollection.aggregate([
+                {
+                    $match: { "petInfo.addedBy.email": email }
+                },
+                {
+                    $unwind: "$userInfo"
+                },
+                {
+                    $project: {
+                        _id: 1,
+                        "petInfo._id": 1,
+                        "petInfo.name": 1,
+                        "petInfo.image": 1,
+                        "petInfo.adopted": 1,
+                        "petInfo.addedBy": 1,
+                        "userInfo": 1,
+                    }
+                }
+            ]).toArray();
+            res.send(result);
+        })
+
+        app.patch("/my-pets-adoption-request", verifyToken, async (req, res) => {
+            const listingId = req.query.listingId;
+            const adoptionRequestId = req.query.adoptionRequestId;
+            const filter = { _id: new ObjectId(listingId) };
+            const updatedDoc = {
+                $set: {
+                    adopted: true,
+                }
+            }
+            const query = { _id: new ObjectId(adoptionRequestId) };
+            const updatedDoc2 = {
+                $set: {
+                    "petInfo.adopted": true,
+                }
+            }
+            const result = await petListingCollection.updateOne(filter, updatedDoc);
+            if (result.modifiedCount) {
+                const result2 = await adoptionRequestCollection.updateOne(query, updatedDoc2);
+                res.send(result2);
+            }
+        })
+
+        app.delete("/my-pets-adoption-request/:id", verifyToken, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await adoptionRequestCollection.deleteOne(query);
+            res.send(result);
+        })
+
+
+        app.get("/all-pets",verifyToken , verifyAdmin, async (req, res) => {
             const result = await petListingCollection.find().toArray();
             res.send(result);
         })
 
-        app.patch("/pet-listing/:id", async (req, res) => {
+        app.patch("/pet-listing/:id",verifyToken, async (req, res) => {
             const id = req.params.id;
             const updateBy = req.body;
-            const filter = {_id : new ObjectId(id)};
+            const filter = { _id: new ObjectId(id) };
             const updatedDoc = {
-                $set : {
+                $set: {
                     ...updateBy,
                 }
             }
-            const result = await petListingCollection.updateOne(filter , updatedDoc);
+            const result = await petListingCollection.updateOne(filter, updatedDoc);
             res.send(result);
         })
 
-        app.delete("/pet-listing/:id" , async (req, res) => {
+        app.delete("/pet-listing/:id" , verifyToken, async (req, res) => {
             const id = req.params.id;
-            const query = {_id : new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const result = await petListingCollection.deleteOne(query);
             res.send(result);
         })
 
         // add pets by user
-        app.post("/add-a-pet", async (req, res) => {
+        app.post("/add-a-pet" , verifyToken , async (req, res) => {
             const petInfo = req.body;
             const query = {
                 name: petInfo.name,
@@ -181,21 +234,21 @@ async function run() {
         })
 
         //get added pets by user
-        app.get("/my-added-pets/:email", async (req, res) => {
+        app.get("/my-added-pets/:email",verifyToken, async (req, res) => {
             const email = req.params.email;
             const query = { "addedBy.email": email };
             const result = await petListingCollection.find(query).toArray();
             res.send(result)
         })
 
-        app.delete("/my-added-pets/:id", async (req, res) => {
+        app.delete("/my-added-pets/:id",verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await petListingCollection.deleteOne(query);
             res.send(result);
         })
 
-        app.patch("/my-added-pets/:id", async (req, res) => {
+        app.patch("/my-added-pets/:id",verifyToken, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const updatedDoc = {
@@ -216,7 +269,7 @@ async function run() {
         })
 
         //update pet info 
-        app.put("/update-a-pet/:id", async (req, res) => {
+        app.put("/update-a-pet/:id" , verifyToken, async (req, res) => {
             const id = req.params.id;
             const updatedInfo = req.body;
             const filter = { _id: new ObjectId(id) };
@@ -231,8 +284,11 @@ async function run() {
 
         //donation campaign related api
 
-        app.get("/donation-campaign" , async (req, res) => {
-            const result = await donationCampaignCollection.find().toArray();
+        app.get("/donation-campaign-recommended", async (req, res) => {
+            const page = req?.query?.page || 1;
+            const limit = req?.query?.limit || 3;
+            const sortBy = { createdAt: -1 };
+            const result = await donationCampaignCollection.find().skip((page - 1) * limit).limit(page * limit).sort(sortBy).toArray();
             res.send(result);
         })
 
@@ -251,7 +307,7 @@ async function run() {
             res.send(result);
         })
 
-        app.post("/donation-campaign", async (req, res) => {
+        app.post("/donation-campaign",verifyToken, async (req, res) => {
             const campaignDetails = req.body;
             const query = {
                 petName: campaignDetails?.petName,
@@ -265,7 +321,7 @@ async function run() {
             res.send(result);
         })
 
-        app.patch("/donation-campaign/:id", async (req, res) => {
+        app.patch("/edit-donation-campaign/:id",verifyToken, async (req, res) => {
             const id = req.params.id;
             const updatedInfo = req.body;
             const filter = { _id: new ObjectId(id) };
@@ -278,20 +334,19 @@ async function run() {
             res.send(result);
         })
 
-        app.delete("/all-donation-campaign/:id", async (req, res) => {
+        app.delete("/all-donation-campaign/:id",verifyToken , verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await petListingCollection.deleteOne(query);
             res.send(result);
         })
 
-        app.patch("/all-donation-campaign/:id", async (req, res) => {
+        app.patch("/all-donation-campaign/:id",verifyToken , verifyAdmin, async (req, res) => {
             const id = req?.params?.id;
             const updatedInfo = req.body;
-            console.log(id , updatedInfo)
             const query = { _id: new ObjectId(id) };
             const updatedDoc = {
-                $set : {
+                $set: {
                     ...updatedInfo
                 }
             }
@@ -334,20 +389,20 @@ async function run() {
         })
 
         //my donation campaign related api 
-        app.get("/my-donation-campaign", async (req, res) => {
+        app.get("/my-donation-campaign", verifyToken, async (req, res) => {
             const userEmail = req.query.email;
             const query = { 'addedBy.email': userEmail };
             const result = await donationCampaignCollection.find(query).toArray();
             res.send(result);
         })
-        app.get("/my-donation-campaign/:id", async (req, res) => {
+        app.get("/my-donation-campaign/:id" , verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await donationCampaignCollection.findOne(query);
             res.send(result);
         })
 
-        app.get("/my-donations/:email", async (req, res) => {
+        app.get("/my-donations/:email",verifyToken, async (req, res) => {
             const email = req.params.email;
             const result = await donationCampaignCollection.aggregate([
                 {
@@ -373,7 +428,7 @@ async function run() {
             res.send(result);
         })
 
-        app.patch("/my-donations", async (req, res) => {
+        app.patch("/my-donations" , verifyToken, async (req, res) => {
             const id = req?.query?.id;
             const transactionId = req?.query?.transactionId;
             const query = { _id: new ObjectId(id) };
@@ -388,7 +443,7 @@ async function run() {
             res.send(result);
         })
 
-        app.patch("/my-donation-campaign/:id", async (req, res) => {
+        app.patch("/my-donation-campaign/:id" , verifyToken, async (req, res) => {
             const id = req.params.id;
             const isPaused = req.query.paused;
             const filter = { _id: new ObjectId(id) };
@@ -403,7 +458,7 @@ async function run() {
 
 
         //adoption requiest
-        app.post("/adoption-request", async (req, res) => {
+        app.post("/adoption-request" , verifyToken, async (req, res) => {
             const requestData = req.body;
             //checking if user already request once 
             const query = {
@@ -425,7 +480,7 @@ async function run() {
         })
 
         //payment related api
-        app.post("/create-payment-intent", async (req, res) => {
+        app.post("/create-payment-intent",verifyToken, async (req, res) => {
             const { donationAmount } = req.body;
             const amount = parseInt(donationAmount * 100);
 
@@ -447,8 +502,8 @@ async function run() {
         })
 
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
