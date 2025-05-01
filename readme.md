@@ -6,28 +6,27 @@
 
 ## 🚀 Features
 
-- 🐶 Add and browse pets available for adoption  
-- 📩 Send and manage adoption requests  
-- 💰 Create and support donation campaigns  
-- 🧾 View your donations and campaigns  
-- 🛡️ Role-based dashboards (admin/user)  
-- 🔐 JWT authentication & authorization  
-- 🌐 Hosted with **Vercel** (frontend) and **Render** (backend)
+- 🐶 Add and browse pets available for adoption
+- 📩 Send and manage adoption requests
+- 💰 Create and support donation campaigns
+- 🧾 View your donations and campaigns
+- 🛡️ Role-based dashboards (admin/user)
+- 🔐 JWT authentication & authorization
+- 🌐 Hosted with **Vercel** (frontend) and **Vercel** (backend)
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Frontend:** React, React Router, Tailwind CSS, DaisyUI, Axios  
-- **Backend:** Node.js, Express.js, MongoDB, Mongoose  
-- **Authentication:** JWT, secure cookies  
-- **Payment Gateway:** Stripe  
-- **Deployment:** Vercel (client), Render (server)
+- **Frontend:** React, React Router, Tailwind CSS, DaisyUI, Axios
+- **Backend:** Node.js, Express.js, MongoDB, Mongoose
+- **Authentication:** JWT, secure cookies
+- **Payment Gateway:** Stripe
+- **Deployment:** Vercel (client), Vercel (server)
 
 ---
 
 ## 📂 Project Structure
-
 
 ---
 
@@ -56,3 +55,23 @@ cd ../client
 npm install
 
 
+##📦 Deployment
+Frontend: Vercel
+
+Backend: Vercel
+
+Make sure to correctly configure your environment variables in production as well.
+
+
+##🌐 Live Demo
+🔗 https://feliz-tails.vercel.app
+
+
+##🙋‍♂️ Author
+###MD SOJIB HOSSAIN
+Diploma in Engineering, Computer Technology
+Dhaka Polytechnic Institute
+📧 Email: arifulislamofficial26@gmail.com
+📸 Instagram
+👤 Facebook
+```
