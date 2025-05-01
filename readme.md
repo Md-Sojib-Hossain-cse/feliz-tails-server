@@ -53,7 +53,7 @@ cd feliz-tails
 ## Install dependencies
 cd ../client
 npm install
-
+```
 
 ## 📦 Deployment
 Frontend: Vercel
@@ -74,4 +74,3 @@ Dhaka Polytechnic Institute
 📧 Email: arifulislamofficial26@gmail.com
 📸 Instagram
 👤 Facebook
-```
