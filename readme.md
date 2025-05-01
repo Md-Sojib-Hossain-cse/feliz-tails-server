@@ -55,6 +55,57 @@ cd ../client
 npm install
 ```
 
+## 📌 API Endpoints
+### 🛡️ Authentication
+POST /jwt – Generate JWT token and set as HTTP-only cookie
+
+POST /logout – Clear the token cookie
+
+### 🐶 Pets
+GET /pets – Get all pets (with optional filters: category, search, email)
+
+POST /addPet – Add a new pet (requires JWT)
+
+GET /pet/:id – Get pet details (requires JWT)
+
+PUT /pet/:id – Update a pet (requires JWT)
+
+DELETE /pet/:id – Delete a pet (requires JWT)
+
+### 📥 Adoption Requests
+GET /adoptionRequests – Get all adoption requests (filterable by email, requires JWT)
+
+POST /adoptionRequests – Submit an adoption request (requires JWT)
+
+PATCH /adoptionRequests/:id – Update request status (approve/reject) (requires JWT)
+
+### 💰 Donation Campaigns
+GET /campaigns – Get all donation campaigns
+
+POST /campaigns – Create a new campaign (requires JWT)
+
+GET /campaigns/:id – Get campaign details
+
+PATCH /campaigns/:id – Update campaign (requires JWT)
+
+DELETE /campaigns/:id – Delete campaign (requires JWT)
+
+### 🎁 Donations
+GET /donations – Get all donations (optional filter by user email)
+
+POST /donations – Submit a donation
+
+### 📊 User Stats
+GET /myAddedPets – Get pets added by a specific user (filter by email)
+
+GET /myDonationCampaigns – Get campaigns created by a user (filter by email)
+
+GET /myDonations – Get user donation history (filter by email)
+
+## 🔐 Middleware
+verifyToken
+A middleware to protect routes using JWT. It checks for a valid token in the cookie, verifies and decodes it before allowing access to protected endpoints.
+
 ## 📦 Deployment
 Frontend: Vercel
 
@@ -71,6 +122,4 @@ Make sure to correctly configure your environment variables in production as wel
 ### MD SOJIB HOSSAIN
 Diploma in Engineering, Computer Technology
 Dhaka Polytechnic Institute
-📧 Email: arifulislamofficial26@gmail.com
-📸 Instagram
-👤 Facebook
+📧 Email: sojibhossain.cse@gmail.com
