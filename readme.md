@@ -45,17 +45,17 @@ CLIENT_URL=https://your-frontend-url.com
 COOKIE_SECRET=your_cookie_secret
 
 
-##Local Setup
+## Local Setup
 
 git clone https://github.com/your-username/feliz-tails.git
 cd feliz-tails
 
-##Install dependencies
+## Install dependencies
 cd ../client
 npm install
 
 
-##📦 Deployment
+## 📦 Deployment
 Frontend: Vercel
 
 Backend: Vercel
@@ -63,12 +63,12 @@ Backend: Vercel
 Make sure to correctly configure your environment variables in production as well.
 
 
-##🌐 Live Demo
+## 🌐 Live Demo
 🔗 https://feliz-tails.vercel.app
 
 
-##🙋‍♂️ Author
-###MD SOJIB HOSSAIN
+## 🙋‍♂️ Author
+### MD SOJIB HOSSAIN
 Diploma in Engineering, Computer Technology
 Dhaka Polytechnic Institute
 📧 Email: arifulislamofficial26@gmail.com
